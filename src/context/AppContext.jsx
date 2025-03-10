@@ -2,6 +2,7 @@ import { createContext, use, useEffect } from "react";
 import { dummyCourses } from "../assets/assets";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import humanizeDuration from "humanize-duration";
 
 
 export const AppContext = createContext();
@@ -12,89 +13,73 @@ export const AppContextProvider = (props) => {
     const navigate = useNavigate()
     const [allCourses, setAllCourses] = useState([])
     const [isInstructor, setIsInstructor] = useState(true)
-    // console.log(dummyCourses)
+    const [enrolledCourses, setEnrolledCourses] = useState([])
+
+    // console.log(enrolledCourses)
 
     const fetchAllCourses =  () => {
-        setAllCourses(dummyCourses)
-        // console.log(allCourses)
+        try {
+            setAllCourses(dummyCourses)
+        } catch (error) {
+            console.error('Failed to fetch courses:', error)
+        }
     }
     //to calculate rating 
     const calculateRating = (course) => {
-        if(course.courseRatings.length === 0) {
-            return 0
+        if (!course.courseRatings || course.courseRatings.length === 0) {
+            return 0;
         }
-        let totalRating = 0
-        course.courseRatings.forEach(rating => {
-            totalRating += rating.rating
+        const totalRatings = course.courseRatings.length;
+        const sumRatings = course.courseRatings.reduce((sum, rating) => {
+            const validRating = typeof rating === 'number' && !isNaN(rating) ? rating : 0;
+            return sum + validRating;
+        }, 0);
+        return totalRatings > 0 ? (sumRatings / totalRatings) : 0;
+    }
+
+    //course chapter time 
+    const calculateChapterTime = (chapter) => {
+        let time = 0
+        chapter.chapterContent.map((lecture)=> time += lecture.lectureDuration)
+        return humanizeDuration(time * 60 * 1000, {units: ["h", "m"]})
+    }
+
+    //course duration
+    const calculateCourseDuration = (course) => {
+        let time = 0
+        course.courseContent.map((chapter) => chapter.chapterContent.map(
+            (lecture) => time += lecture.lectureDuration
+        ))
+        return humanizeDuration(time * 60 * 1000, {units: ["h", "m"]})
+    }
+
+    //no.of lectures
+    const calculateNoOfLectures = (course) => {
+        let totalLectures = 0
+        course.courseContent.forEach(chapter => {
+            if(Array.isArray(chapter.chapterContent)) {
+                totalLectures += chapter.chapterContent.length
+            }
         })
-        return totalRating / course.courseRatings.length
+        return totalLectures;
+    }
+
+    //user Enrolled Courses
+    const fetchUserEnrolledCourses = async ()=>{
+        setEnrolledCourses()
     }
 
     useEffect(() => {
         fetchAllCourses()
+        fetchUserEnrolledCourses()
     }, []) 
 
     const value = {
-        currency, allCourses, navigate, calculateRating, isInstructor, setIsInstructor
+        currency, allCourses, navigate, calculateRating, isInstructor, setIsInstructor, calculateChapterTime, calculateCourseDuration, calculateNoOfLectures, enrolledCourses, fetchUserEnrolledCourses
     }
     return (
         <AppContext.Provider value={value}>
             {props.children}
         </AppContext.Provider>
     )
-}  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// import { createContext, useEffect, useState } from "react";
-// import { dummyCourses } from "../assets/assets";
-
-// export const AppContext = createContext();
-
-// export const AppContextProvider = (props) => {
-//     const currency = import.meta.env.VITE_CURRENCY;
-//     const [allCourses, setAllCourses] = useState([]);
-
-//     // Function to update state
-//     const fetchAllCourses = () => {
-//         setAllCourses(dummyCourses); // ✅ This is async
-//     };
-
-//     // Run only once on mount
-//     useEffect(() => {
-//         fetchAllCourses();
-//     }, []);
-
-//     // ✅ Log after state has been updated
-//     useEffect(() => {
-//         console.log("Updated allCourses:", allCourses);
-//     }, [allCourses]);
-
-//     const value = {
-//         currency,
-//         allCourses
-//     };
-
-//     return (
-//         <AppContext.Provider value={value}>
-//             {props.children}
-//         </AppContext.Provider>
-//     );
-// };
+}
