@@ -66,7 +66,7 @@ export const AppContextProvider = (props) => {
 
     //user Enrolled Courses
     const fetchUserEnrolledCourses = async ()=>{
-        setEnrolledCourses()
+        setEnrolledCourses(dummyCourses)
     }
 
     useEffect(() => {
